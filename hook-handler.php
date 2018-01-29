@@ -1,13 +1,16 @@
 <?php
 /*
  * Endpoint for Github Webhook URLs
- *
- * see: https://help.github.com/articles/post-receive-hooks
+ * Initial version adopted from: https://gist.github.com/gka/4627519
+ * Initial author: Gregor Aisch / gka
+ * 
+ * Modified and upgraded by David Stein
+ * (better config and error handling, signature verification, ...)
  *
  */
 function run() {
     // read config.json
-    $config_filename = '/home/std19050/githook.config.json';
+    $config_filename = '/home/std19050/.githook/githook.config.json';
     if (!file_exists($config_filename)) {
         throw new Exception('Can\'t find config.');
     }
@@ -16,50 +19,55 @@ function run() {
     $payload = json_decode($postBody);
     if (isset($config['email'])) {
         $headers = 'From: '.$config['email']['from']."\r\n";
-        $headers .= 'CC: ' . $payload->pusher->email . "\r\n";
+        if (isset($config['email']['cc'])) { 
+            $headers .= 'CC: ' .$config['email']['cc']. "\r\n";
+        }
+        if (isset($config['email']['bcc'])) { 
+            $headers .= 'BCC: ' .$config['email']['bcc']. "\r\n";
+        }
         $headers .= 'MIME-Version: 1.0'."\r\n";
         $headers .= 'Content-Type: text/html; charset=ISO-8859-1'."\r\n";
     }
     // check if the request comes from github server
     
-    $secret = $config['secret'];
-    if ($secret === NULL) {
-        throw new \Exception('Config error: could not find hash secret.');
-        die();
-    }
-
     $signature = filter_input(INPUT_SERVER, 'HTTP_X_HUB_SIGNATURE');
     if (empty($signature)) {
-            throw new \Exception('HTTP header \'X-Hub-Signature\' is missing.');
+            throw new \Exception('HTTP header \'X-Hub-Signature\' is missing. Please don\'t use this script with unsigned hooks.');
             die();
     } elseif (!extension_loaded('hash')) {
             throw new \Exception('Missing \'hash\' extension to check the secret code validity.');
             die();
     }
-    list($algo, $hash) = explode('=', $signature, 2) + array('', '');
-    if (!in_array($algo, hash_algos(), TRUE)) {
-            throw new \Exception('Hash algorithm "'.$algo.'" is not supported.');
+    list($hashAlgorithm, $hashString) = explode('=', $signature, 2) + array('', '');
+    if (!in_array($hashAlgorithm, hash_algos(), true)) {
+            throw new \Exception('Hash algorithm "'.$hashAlgorithm.'" is not supported.');
             die();
     }
     $rawPost = file_get_contents('php://input');
 
     //hash check was successful after here - this does look like a valid hook call by github.
+    //a
     foreach ($config['endpoints'] as $endpoint) {
         // check if the push came from the right repository and branch
         if ($payload->repository->url == 'https://github.com/' . $endpoint['repo']
             && $payload->ref == 'refs/heads/' . $endpoint['branch']) {
             
+            if (!isset($endpoint['secret']) || empty($endpoint['secret'])) {
+                throw new \Exception('Config error: could not find hash secret.');
+                die();
+            }
+
             //validate hash for this call
-            if (!hash_equals($hash, hash_hmac($algo, $rawPost, $endpoint['secret']))) {
+            if (!hash_equals($hashString, hash_hmac($hashAlgorithm, $rawPost, $endpoint['secret']))) {
                 throw new \Exception('Hook secret does not match.');
                 die();
             }
             
             // execute update script, and record its output
-            //ob_start();
-            //passthru($endpoint['run']);
-            //$output = ob_end_contents();
-            $output = "heyo";
+            ob_start();
+            require($endpoint['run']);
+            $output = ob_get_clean();
+
             // prepare and send the notification email
             if (isset($config['email'])) {
                 // send mail to someone, and the github user who pushed the commit
@@ -82,9 +90,9 @@ function run() {
                 $body .= '<p>What follows is the output of the script:</p><pre>';
                 $body .= $output. '</pre>';
                 $body .= '<p>Cheers, <br/>Github Webhook Endpoint</p>';
-                mail($config['email']['to'], $endpoint['action'], $body, $headers);
+                mail($payload->pusher->email, $endpoint['action'], $body, $headers);
             }
-            return true;
+            exit('Thanks.');
         }
     }
     throw new \Exception('Found no configuration for this hook call! Repo: "'.$payload->repository->url.'" branch: "'.$payload->ref.'"');
@@ -93,6 +101,5 @@ function run() {
 if (isset($_POST['payload'])) {
     run();
 } else {
-    die(substr(serialize($_POST), 0, 1000));
     die('Missing payload. Do not call this directly.'.PHP_EOL);
 }
