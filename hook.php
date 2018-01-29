@@ -1,4 +1,5 @@
 <?php
+set_error_handler('mailerror');
 /*
  * Endpoint for Github Webhook URLs
  *
@@ -87,12 +88,23 @@ function run() {
     }
 }
 try {
-    //if (isset($_POST['payload'])) {
+    if (isset($_POST['payload'])) {
         run();
-    //}
+    } else {
+        die('Missing payload. Do not call this directly.'.PHP_EOL);
+    }
 } catch ( Exception $e ) {
     $msg = $e->getMessage();
     mail($error_mail, 'Githook endpoint error', $msg.PHP_EOL.$e);
 }
 
+function mailerror($code, $text, $file, $line) {
+    global $error_mail;
+    try {
+        throw new \ErrorException($text.PHP_EOL." on ".$file.":".$line, $code);
+    } catch (Exception $ex) {
+        $msg = $ex->getMessage();
+        mail($error_mail, 'Githook endpoint error', $msg.PHP_EOL.$ex);
+    }
+}
 ?>
