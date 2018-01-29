@@ -48,7 +48,7 @@ function run() {
             throw new \Exception('Hook secret does not match.');
             die();
     }
-    
+    throw new \Exception('hash check passed');
     foreach ($config['endpoints'] as $endpoint) {
         // check if the push came from the right repository and branch
         if ($payload->repository->url == 'https://github.com/' . $endpoint['repo']
