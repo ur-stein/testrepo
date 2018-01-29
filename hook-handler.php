@@ -46,7 +46,6 @@ function run() {
     $rawPost = file_get_contents('php://input');
 
     //hash check was successful after here - this does look like a valid hook call by github.
-    //a
     foreach ($config['endpoints'] as $endpoint) {
         // check if the push came from the right repository and branch
         if ($payload->repository->url == 'https://github.com/' . $endpoint['repo']
