@@ -24,12 +24,12 @@ function run() {
     }
     // check if the request comes from github server
     
-    $secret = $config->secret;
+    $secret = $config['secret'];
     if ($secret === NULL) {
         throw new \Exception('Config error: could not find hash secret.');
         die();
     }
-    
+
     $signature = filter_input(INPUT_SERVER, 'HTTP_X_HUB_SIGNATURE');
     if (empty($signature)) {
             throw new \Exception('HTTP header \'X-Hub-Signature\' is missing.');
