@@ -1,5 +1,5 @@
 <?php
-/* 
+/*
  * Endpoint for Github Webhook URLs
  *
  * see: https://help.github.com/articles/post-receive-hooks
@@ -48,7 +48,7 @@ function run() {
             throw new \Exception('Hook secret does not match.');
             die();
     }
-    throw new \Exception('hash check passed');
+    //hash check was successful after here - this does look like a valid hook call by github.
     foreach ($config['endpoints'] as $endpoint) {
         // check if the push came from the right repository and branch
         if ($payload->repository->url == 'https://github.com/' . $endpoint['repo']
