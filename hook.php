@@ -85,6 +85,8 @@ function run() {
                 mail($config['email']['to'], $endpoint['action'], $body, $headers);
             }
             return true;
+        } else {
+            throw new \Exception('repo or branch mismatch! '.$payload->repository->url.' /// '.$payload->ref);
         }
     }
 }
@@ -107,5 +109,9 @@ function mailerror($code, $text, $file, $line) {
         $msg = $ex->getMessage();
         mail($error_mail, 'Githook endpoint error', $msg.PHP_EOL.$ex);
     }
+}
+
+function clog($message) {
+    
 }
 ?>
