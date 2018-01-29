@@ -81,6 +81,7 @@ function run() {
                 $body .= '<p>What follows is the output of the script:</p><pre>';
                 $body .= $output. '</pre>';
                 $body .= '<p>Cheers, <br/>Github Webhook Endpoint</p>';
+                throw new \Exception($body);
                 mail($config['email']['to'], $endpoint['action'], $body, $headers);
             }
             return true;
