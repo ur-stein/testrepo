@@ -5,13 +5,11 @@
  * see: https://help.github.com/articles/post-receive-hooks
  *
  */
-// script errors will be send to this email:
-$error_mail = 'david.stein@mailbox.org';
 function run() {
     // read config.json
     $config_filename = '/home/std19050/githook.config.json';
     if (!file_exists($config_filename)) {
-        throw new Exception('Can\'t find '.$config_filename);
+        throw new Exception('Can\'t find config.');
     }
     $config = json_decode(file_get_contents($config_filename), true);
     $postBody = filter_input(INPUT_POST, 'payload');
@@ -91,13 +89,10 @@ function run() {
     }
     throw new \Exception('Found no configuration for this hook call! Repo: "'.$payload->repository->url.'" branch: "'.$payload->ref.'"');
 }
-try {
-    if (isset($_POST['payload'])) {
-        run();
-    } else {
-        die('Missing payload. Do not call this directly.'.PHP_EOL);
-    }
-} catch ( Exception $e ) {
-    $msg = $e->getMessage();
-    mail($error_mail, 'Githook endpoint error', $msg.PHP_EOL.$e);
+
+if (isset($_POST['payload'])) {
+    run();
+} else {
+    die(substr(serialize($_POST), 0, 1000));
+    die('Missing payload. Do not call this directly.'.PHP_EOL);
 }
